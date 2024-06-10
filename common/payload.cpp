@@ -33,15 +33,20 @@ namespace Payload {
 
         void RebootToPayload() {
             /* Try reboot with safe ams bpc api. */
+            smInitialize();
             Result rc = amsBpcInitialize();
             if (R_SUCCEEDED(rc)) {
                 rc = amsBpcSetRebootPayload(g_reboot_payload, IRAM_PAYLOAD_MAX_SIZE);
                 if (R_SUCCEEDED(rc)) {
+                    spsmInitialize();
                     spsmShutdown(true);
+                    spsmExit();
+                    smExit();
                 }
                 amsBpcExit();
+                smExit();
             }
-            
+
             /* Fallback to old smc reboot to payload. */
             if (R_FAILED(rc))
                 smc_reboot_to_payload();

@@ -1486,8 +1486,25 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
             std::string fileUrl = preprocessUrl(cmd[1]);
             std::string destinationPath = preprocessPath(cmd[2], packagePath);
             bool downloadSuccess = false;
-            
+            Result rc;
+
             //setIniFileValue((packagePath+CONFIG_FILENAME).c_str(), selectedCommand.c_str(), "footer", "downloading");
+            smInitialize();
+            if (R_FAILED(rc = socketInitializeDefault())) {
+                smExit();
+                return;
+            }
+            if (R_FAILED(rc = nifmInitialize(NifmServiceType_User))) {
+                socketExit();
+                smExit();
+                return;
+            }
+            if (R_FAILED(rc = initializeCurl()) {
+                nifmExit();
+                socketExit();
+                smExit();
+                return;
+            }
             for (size_t i = 0; i < 3; ++i) { // Try 3 times.
                 downloadSuccess = downloadFile(fileUrl, destinationPath);
                 if (abortDownload.load(std::memory_order_acquire)) {
@@ -1499,6 +1516,10 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
             }
             //downloadSuccess = enqueueDownloadFile(fileUrl, destinationPath);
             //downloadSuccess = downloadFile(fileUrl, destinationPath);
+            cleanupCurl();
+            nifmExit();
+            socketExit();
+            smExit();
             commandSuccess = (downloadSuccess && commandSuccess);
         }
     } else if (commandName == "unzip") {
@@ -1644,28 +1665,34 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
         }
         
         // Fall back reboot command
-        i2cExit();
-        splExit();
         fsdevUnmountAll();
+        smInitialize();
+        spsmInitialize();
         spsmShutdown(SpsmShutdownMode_Reboot);
-        
+        spsmExit();
+        smExit();
     } else if (commandName == "shutdown") {
         // Reboot command
-        splExit();
         fsdevUnmountAll();
+        smInitialize();
+        spsmInitialize();
         spsmShutdown(SpsmShutdownMode_Normal);
+        spsmExit();
+        smExit();
     } else if (commandName == "exit") {
         triggerExit.store(true, std::memory_order_release);
         return;
     } else if (commandName == "backlight") {
         if (cmdSize >= 2) {
             std::string togglePattern = removeQuotes(cmd[1]);
+            smInitialize();
             lblInitialize();
             if (togglePattern == ON_STR)
                 lblSwitchBacklightOn(0);
             else if (togglePattern == OFF_STR)
                 lblSwitchBacklightOff(0);
             lblExit();
+            smExit();
         }
         
     } else if (commandName == "refresh") {
