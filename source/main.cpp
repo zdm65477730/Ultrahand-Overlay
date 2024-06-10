@@ -2872,7 +2872,7 @@ public:
                     //    continue;
                     //}
 
-                    const auto& [result, overlayName, overlayVersion] = getOverlayInfo(OVERLAY_PATH + overlayFileName);
+                    auto [result, overlayName, overlayVersion] = getOverlayInfo(OVERLAY_PATH + overlayFileName);
                     if (result != ResultSuccess) continue;
 
                     std::string pluginLangPath = std::string("sdmc:/switch/.overlays/lang/") + overlayName + "/" + base_lang + ".json";

@@ -1499,12 +1499,7 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                 smExit();
                 return;
             }
-            if (R_FAILED(rc = initializeCurl()) {
-                nifmExit();
-                socketExit();
-                smExit();
-                return;
-            }
+            initializeCurl();
             for (size_t i = 0; i < 3; ++i) { // Try 3 times.
                 downloadSuccess = downloadFile(fileUrl, destinationPath);
                 if (abortDownload.load(std::memory_order_acquire)) {
