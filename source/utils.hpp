@@ -1386,14 +1386,11 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
             Result rc;
 
             //setIniFileValue((packagePath+CONFIG_FILENAME).c_str(), selectedCommand.c_str(), "footer", "downloading");
-            smInitialize();
             if (R_FAILED(rc = socketInitializeDefault())) {
-                smExit();
                 return;
             }
             if (R_FAILED(rc = nifmInitialize(NifmServiceType_User))) {
                 socketExit();
-                smExit();
                 return;
             }
             initializeCurl();
@@ -1411,7 +1408,6 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
             cleanupCurl();
             nifmExit();
             socketExit();
-            smExit();
             commandSuccess = (downloadSuccess && commandSuccess);
         }
     } else if (commandName == "unzip") {
@@ -1558,26 +1554,21 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
         
         // Fall back reboot command
         fsdevUnmountAll();
-        smInitialize();
         spsmInitialize();
         spsmShutdown(SpsmShutdownMode_Reboot);
         spsmExit();
-        smExit();
     } else if (commandName == "shutdown") {
         // Reboot command
         fsdevUnmountAll();
-        smInitialize();
         spsmInitialize();
         spsmShutdown(SpsmShutdownMode_Normal);
         spsmExit();
-        smExit();
     } else if (commandName == "exit") {
         triggerExit.store(true, std::memory_order_release);
         return;
     } else if (commandName == "backlight") {
         if (cmdSize >= 2) {
             std::string togglePattern = removeQuotes(cmd[1]);
-            smInitialize();
             lblInitialize();
             if (togglePattern == ON_STR)
                 lblSwitchBacklightOn(0);
@@ -1602,7 +1593,6 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                 //setsysExit();
             }
             lblExit();
-            smExit();
         }
         
     } else if (commandName == "refresh") {

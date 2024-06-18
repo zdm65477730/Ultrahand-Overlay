@@ -77,15 +77,12 @@ namespace util {
 
         u64 version = 0;
         
-        smInitialize();
         splInitialize();
         if (R_FAILED(splGetConfig(static_cast<SplConfigItem>(65000), &version))) {
             splExit();
-            smExit();
             return false;
         }
         splExit();
-        smExit();
 
         const u32 version_minor = (version >> 48) & 0xff;
         const u32 version_major = (version >> 56) & 0xff;

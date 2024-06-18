@@ -4075,6 +4075,7 @@ public:
      */
     virtual void initServices() override {
         fsdevMountSdmc();
+        ASSERT_FATAL(smInitialize());
         tsl::initializeThemeVars();
     }
     
@@ -4087,6 +4088,7 @@ public:
      */
     virtual void exitServices() override {
         closeInterpreterThread(); // shouldn't be running, but run close anyways
+        smExit();
         fsdevUnmountAll();
     }
     
