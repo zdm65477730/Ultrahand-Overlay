@@ -377,7 +377,7 @@ private:
                 	    //{"delete", EXPANSION_PATH + "nx-ovlloader+.zip"},
                 	    {"delete", targetPath},
                 	    {"download", INCLUDED_THEME_FOLDER_URL+"ultra.ini", THEMES_PATH},
-                	    {"download", INCLUDED_THEME_FOLDER_URL+"classic.ini", THEMES_PATH},
+                	    {"download", INCLUDED_THEME_FOLDER_URL+"ultra-blue.ini", THEMES_PATH},
                 	    {"download", loaderUrl, EXPANSION_PATH},
                 	    {"download", loaderPlusUrl, EXPANSION_PATH},
                 	    {"download", downloadUrl, DOWNLOADS_PATH}
@@ -461,6 +461,8 @@ private:
                 redrawWidget = true;
             } else if (iniKey == "right_alignment") {
                 triggerMenuReload = (rightAlignmentState != state);
+            } else if (iniKey == "dynamic_logo") {
+                useDynamicLogo = !useDynamicLogo;
             }
     
             reloadMenu = true;
@@ -631,7 +633,7 @@ public:
             tableData = {
                 {"", "", "CPU      GPU      SOC"}
             };
-            addTable(list, tableData, "", 163, 8, 3, 0, DEFAULT_STR, "section", RIGHT_STR, true);
+            addTable(list, tableData, "", 163, 8, 3, 0, DEFAULT_STR, "section", "section", RIGHT_STR, true);
             
             tableData.clear();
             tableData.resize(2);
@@ -661,14 +663,23 @@ public:
             
             // Calculate free RAM and store in a smaller buffer
             char ramString[24];  // Reduced buffer size to 24
-            float freeRamMB = (static_cast<float>(RAM_Total_system_u - RAM_Used_system_u) / (1024.0f * 1024.0f)) - 8.0f;
+            float freeRamMB = (static_cast<float>(RAM_Total_system_u - RAM_Used_system_u) / (1024.0f * 1024.0f));
             snprintf(ramString, sizeof(ramString), "%.2f MB %s", freeRamMB, FREE.c_str());
+
+            std::string ramColor;
+            if (freeRamMB >= 9.0f){
+                ramColor = "healthy_ram"; // Green: R=0, G=15, B=0
+            } else if (freeRamMB >= 3.0f) {
+                ramColor = "neutral_ram"; // Orange-ish: R=15, G=10, B=0 → roughly RGB888: 255, 170, 0
+            } else {
+                ramColor = "bad_ram"; // Red: R=15, G=0, B=0
+            }
             
             // Reuse tableData with minimal reallocation
             tableData = {
                 {NOTICE, "", UTILIZES + " 2 MB (" + ramString + ")"}
             };
-            addTable(list, tableData, "", 163, 10, 7, 0, DEFAULT_STR, DEFAULT_STR, RIGHT_STR, true);
+            addTable(list, tableData, "", 163, 10, 7, 0, DEFAULT_STR, DEFAULT_STR, ramColor, RIGHT_STR, true);
             // Memory expansion toggle
             useMemoryExpansion = (loaderTitle == "nx-ovlloader+" || 
                                   parseValueFromIniSection(ULTRAHAND_CONFIG_INI_PATH, ULTRAHAND_PROJECT_NAME, "memory_expansion") == TRUE_STR);
@@ -678,7 +689,7 @@ public:
             tableData = {
                 {"", "", REBOOT_REQUIRED}  // Direct reuse without reallocation
             };
-            addTable(list, tableData, "", 163, 28, 0, 0, DEFAULT_STR, DEFAULT_STR, RIGHT_STR, true);
+            addTable(list, tableData, "", 163, 28, 0, 0, DEFAULT_STR, DEFAULT_STR, DEFAULT_STR, RIGHT_STR, true);
         
         } else if (dropdownSelection == "themeMenu") {
             addHeader(list, THEME);
@@ -867,6 +878,9 @@ public:
             createToggleListItem(list, PACKAGE_VERSIONS, hidePackageVersions, "hide_package_versions", true);
             
             addHeader(list, EFFECTS);
+
+            useDynamicLogo = (parseValueFromIniSection(ULTRAHAND_CONFIG_INI_PATH, ULTRAHAND_PROJECT_NAME, "dynamic_logo") == TRUE_STR);
+            createToggleListItem(list, DYNAMIC_LOGO, useDynamicLogo, "dynamic_logo");
 
             usePageSwap = (parseValueFromIniSection(ULTRAHAND_CONFIG_INI_PATH, ULTRAHAND_PROJECT_NAME, "page_swap") == TRUE_STR);
             createToggleListItem(list, PAGE_SWAP, usePageSwap, "page_swap");
@@ -1450,7 +1464,7 @@ public:
             addDummyListItem(list);
 	        // Draw the table using the sectionLines and empty infoLines
 	        drawTable(list, sectionLines, infoLines, tableColumnOffset, tableStartGap, tableEndGap, tableSpacing,
-	                  tableSectionTextColor, tableInfoTextColor, tableAlignment, hideTableBackground, useHeaderIndent, isScrollableTable, wrappingMode, useWrappedTextIndent);
+	                  tableSectionTextColor, tableInfoTextColor, tableInfoTextColor, tableAlignment, hideTableBackground, useHeaderIndent, isScrollableTable, wrappingMode, useWrappedTextIndent);
 
             if (usingBottomPivot) {
                 addDummyListItem(list);
@@ -3002,7 +3016,7 @@ bool drawCommandsMenu(std::unique_ptr<tsl::elm::List>& list,
                     }
 
                     addTable(list, tableData, packagePath, tableColumnOffset, tableStartGap, tableEndGap, tableSpacing,
-                    	tableSectionTextColor, tableInfoTextColor, tableAlignment, hideTableBackground, useHeaderIndent, isScrollableTable, tableWrappingMode, useWrappingIndent);
+                    	tableSectionTextColor, tableInfoTextColor, tableInfoTextColor, tableAlignment, hideTableBackground, useHeaderIndent, isScrollableTable, tableWrappingMode, useWrappingIndent);
 
                     if (usingBottomPivot) {
                         addDummyListItem(list);
@@ -4187,6 +4201,7 @@ public:
                 setDefaultValue(ultrahandSection, "hide_package_versions", FALSE_STR, hidePackageVersions);
                 setDefaultValue(ultrahandSection, "memory_expansion", FALSE_STR, useMemoryExpansion);
                 // setDefaultValue(ultrahandSection, "custom_wallpaper", FALSE_STR, useCustomWallpaper);
+                setDefaultValue(ultrahandSection, "dynamic_logo", TRUE_STR, useDynamicLogo);
                 setDefaultValue(ultrahandSection, "page_swap", FALSE_STR, usePageSwap);
                 setDefaultValue(ultrahandSection, "swipe_to_open", TRUE_STR, useSwipeToOpen);
                 setDefaultValue(ultrahandSection, "right_alignment", FALSE_STR, useRightAlignment);
@@ -4682,12 +4697,12 @@ public:
                         "ini_file_source /bootloader/hekate_ipl.ini\n"
                         "filter config\n"
                         "reboot boot '{ini_file_source(*)}'\n"
-                        "[hekate]\n"
+                        "[hekate - \uE073]\n"
                         "reboot HEKATE\n"
-                        "[hekate UMS]\n"
+                        "[hekate UMS - \uE073\uE08D]\n"
                         "reboot UMS\n"
                         "\n[Commands]\n"
-                        "[Shutdown]\n"
+                        "[Shutdown - \uE0F3]\n"
                         "shutdown\n"
                     );
                     fclose(packageFileOut); // Close the file after writing
@@ -4702,12 +4717,12 @@ public:
                         "ini_file_source /bootloader/hekate_ipl.ini\n"
                         "filter config\n"
                         "reboot boot '{ini_file_source(*)}'\n"
-                        "[hekate]\n"
+                        "[hekate - \uE073]\n"
                         "reboot HEKATE\n"
-                        "[hekate UMS]\n"
+                        "[hekate UMS - \uE073\uE08D]\n"
                         "reboot UMS\n"
                         "\n[Commands]\n"
-                        "[Shutdown]\n"
+                        "[Shutdown - \uE0F3]\n"
                         "shutdown\n";
                     packageFileOut.close();
                 }
