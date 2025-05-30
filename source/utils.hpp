@@ -3402,6 +3402,8 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
         tsl::setNextOverlay(OVERLAY_PATH+"ovlmenu.ovl");
         tsl::Overlay::get()->close();
         return;
+    } else if (commandName == "back") {
+        simulatedBack = true;
     } else if (commandName == "backlight") {
         if (cmd.size() >= 2) {
             std::string togglePattern = cmd[1];
