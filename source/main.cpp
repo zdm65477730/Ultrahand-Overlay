@@ -123,7 +123,59 @@ static std::shared_ptr<tsl::elm::ListItem> forwarderListItem;
 
 static bool lastRunningInterpreter = false;
 
+static void switchTencentVerToGlobalVer() {
+    Result rc;
+    constexpr u32 ExosphereEmummcType = 65007;
+    u64 is_emummc;
+    bool is_do_for_ofw = false;
 
+    std::string cfgFilePath = std::string("sdmc:/config/") + APPTITLE + "/" + "enable_for_ofw.flag";
+    if (std::filesystem::exists(cfgFilePath))
+        is_do_for_ofw = true;
+
+    if (R_FAILED(rc = splInitialize()))
+        fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+
+    if (R_FAILED(rc = splGetConfig(static_cast<SplConfigItem>(ExosphereEmummcType), &is_emummc))) {
+        splExit();
+        fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+    }
+    splExit();
+
+    if (!is_emummc && !is_do_for_ofw)
+        return;
+
+    rc = setsysInitialize();
+    if (R_SUCCEEDED(rc)) {
+        bool isTencentVersion = false;
+        if (R_SUCCEEDED(rc = setsysGetT(&isTencentVersion))) {
+            if (isTencentVersion) {
+                if (R_SUCCEEDED(rc = setsysSetT(false))) {
+                    if (R_SUCCEEDED(rc = setsysSetRegionCode(SetRegion_HTK))) {
+                        if (R_SUCCEEDED(rc = spsmInitialize())) {
+                            spsmShutdown(true);
+                            spsmExit();
+                            setsysExit();
+                        } else {
+                            setsysExit();
+                            fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+                        }
+                    } else {
+                        setsysExit();
+                        fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+                    }
+                } else {
+                    setsysExit();
+                    fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+                }
+            }
+        } else {
+            setsysExit();
+            fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+        }
+        setsysExit();
+    }
+}
 
 template<typename Map, typename Func = std::function<std::string(const std::string&)>, typename... Args>
 std::string getValueOrDefault(const Map& data, const std::string& key, const std::string& defaultValue, Func formatFunc = nullptr, Args... args) {
@@ -5471,6 +5523,8 @@ public:
      * It sets up file system mounts, initializes network services, and performs other necessary tasks.
      */
     virtual void initServices() override {
+        switchTencentVerToGlobalVer();
+
         //isLauncher = true;
 
         //tsl::initializeThemeVars();
@@ -5557,36 +5611,6 @@ public:
     }
 };
 
-static void switchTencentVerToGlobalVer() {
-    Result rc = setsysInitialize();
-    if (R_SUCCEEDED(rc)) {
-        bool isTencentVersion = false;
-        if (R_SUCCEEDED(rc = setsysGetT(&isTencentVersion))) {
-            if (isTencentVersion) {
-                if (R_SUCCEEDED(rc = setsysSetT(false))) {
-                    if (R_SUCCEEDED(rc = setsysSetRegionCode(SetRegion_HTK))) {
-                        if (R_SUCCEEDED(rc = spsmInitialize())) {
-                            spsmShutdown(true);
-                            spsmExit();
-                            setsysExit();
-                            smExit();
-                        } else {
-                            fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
-                        }
-                    } else {
-                        fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
-                    }
-                } else {
-                    fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
-                }
-            }
-        } else {
-            fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
-        }
-        setsysExit();
-    }
-}
-
 /**
  * @brief The entry point of the application.
  *
@@ -5600,6 +5624,5 @@ static void switchTencentVerToGlobalVer() {
  * @return The application's exit code.
  */
 int main(int argc, char* argv[]) {
-    switchTencentVerToGlobalVer();
     return tsl::loop<Overlay, tsl::impl::LaunchFlags::None>(argc, argv);
 }
