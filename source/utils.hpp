@@ -1833,6 +1833,7 @@ std::vector<std::vector<std::string>> getSourceReplacement(const std::vector<std
         }
         
         if ((inEristaSection && usingErista) || (inMarikoSection && usingMariko) || (!inEristaSection && !inMarikoSection)) {
+            // Apply placeholder replacements if necessary
             for (const auto& arg : cmd) {
                 modifiedArg = arg;
 
@@ -3403,6 +3404,7 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
         tsl::Overlay::get()->close();
         return;
     } else if (commandName == "back") {
+        simulatedBackComplete = false;
         simulatedBack = true;
     } else if (commandName == "backlight") {
         if (cmd.size() >= 2) {
