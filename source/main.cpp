@@ -51,6 +51,8 @@ static bool inPackageMenu = false;
 static bool inSubPackageMenu = false;
 static bool inScriptMenu = false;
 static bool inSelectionMenu = false;
+
+
 //static bool currentMenuLoaded = true;
 static bool freshSpawn = true;
 //static bool refreshPage = false; //moved to libtesla
@@ -208,13 +210,13 @@ void shiftItemFocus(tsl::elm::Element* element) {
  * This function processes the progression of download, unzip, and copy operations,
  * updates the user interface accordingly, and handles the thread failure and abort conditions.
  *
- * @param keysHeld A bitset representing keys that are held down.
+ * @param keysDown A bitset representing keys that are pressed down.
  * @param stillTouching Boolean indicating if the touchscreen is being interacted with.
  * @param lastSelectedListItem Reference to the UI element displaying the current status.
  * @param commandSuccess Reference to a boolean tracking the overall command success.
  * @return `true` if the operation needs to abort, `false` otherwise.
  */
-bool handleRunningInterpreter(uint64_t& keysHeld) {
+bool handleRunningInterpreter(uint64_t& keysDown) {
     static std::string lastSymbol;
     static int lastPercentage = -1;
     static bool inProgress = true;
@@ -260,7 +262,7 @@ bool handleRunningInterpreter(uint64_t& keysHeld) {
         commandSuccess = false;
     }
 
-    if ((keysHeld & KEY_R) && !(keysHeld & ~KEY_R & ALL_KEYS_MASK) && !stillTouching) {
+    if ((keysDown & KEY_R) && !(keysDown & ~KEY_R & ALL_KEYS_MASK) && !stillTouching) {
         commandSuccess = false;
         abortDownload.store(true, std::memory_order_release);
         abortUnzip.store(true, std::memory_order_release);
@@ -962,7 +964,7 @@ public:
 
     virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
         if (runningInterpreter.load(std::memory_order_acquire)) {
-            return handleRunningInterpreter(keysHeld);
+            return handleRunningInterpreter(keysDown);
         }
         if (lastRunningInterpreter) {
             isDownloadCommand = false;
@@ -988,10 +990,10 @@ public:
                     simulatedMenuComplete = true;
                 }
                 if (simulatedBack && !simulatedBackComplete) {
-                    keysHeld |= KEY_B;
+                    keysDown |= KEY_B;
                     simulatedBack = false;
                 }
-                if ((keysHeld & KEY_B) && !stillTouching) {
+                if ((keysDown & KEY_B) && !stillTouching) {
                     allowSlide = unlockedSlide = false;
                     inSettingsMenu = false;
                     returningToMain = (lastMenu != "hiddenMenuMode");
@@ -1012,10 +1014,10 @@ public:
                 simulatedNextPageComplete = true;
             }
             if (simulatedBack && !simulatedBackComplete) {
-                keysHeld |= KEY_B;
+                keysDown |= KEY_B;
                 simulatedBack = false;
             }
-            if ((keysHeld & KEY_B) && !stillTouching) {
+            if ((keysDown & KEY_B) && !stillTouching) {
                 allowSlide = unlockedSlide = false;
                 inSubSettingsMenu = false;
                 returningToSettings = true;
@@ -1030,7 +1032,7 @@ public:
             }
         }
 
-        if (returningToSettings && !(keysHeld & KEY_B)) {
+        if (returningToSettings && !(keysDown & KEY_B)) {
             returningToSettings = false;
             inSettingsMenu = true;
             tsl::impl::parseOverlaySettings();
@@ -1251,7 +1253,7 @@ public:
     virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
 
         if (runningInterpreter.load(std::memory_order_acquire)) {
-            return handleRunningInterpreter(keysHeld);
+            return handleRunningInterpreter(keysDown);
         }
         if (lastRunningInterpreter) {
             //while (!interpreterThreadExit.load(std::memory_order_acquire)) {svcSleepThread(50'000'000);}
@@ -1282,11 +1284,11 @@ public:
                 }
 
                 if (simulatedBack && !simulatedBackComplete) {
-                    keysHeld |= KEY_B;
+                    keysDown |= KEY_B;
                     simulatedBack = false;
                 }
 
-                if ((keysHeld & KEY_B) && !stillTouching) {
+                if ((keysDown & KEY_B) && !stillTouching) {
                     allowSlide = unlockedSlide = false;
                     inSettingsMenu = false;
                     if (lastMenu != "hiddenMenuMode")
@@ -1324,11 +1326,11 @@ public:
             }
 
             if (simulatedBack && !simulatedBackComplete) {
-                keysHeld |= KEY_B;
+                keysDown |= KEY_B;
                 simulatedBack = false;
             }
 
-            if ((keysHeld & KEY_B) && !stillTouching) {
+            if ((keysDown & KEY_B) && !stillTouching) {
                 allowSlide = unlockedSlide = false;
                 inSubSettingsMenu = false;
                 returningToSettings = true;
@@ -1340,7 +1342,7 @@ public:
         }
         
         
-        if (returningToSettings && !(keysHeld & KEY_B)){
+        if (returningToSettings && !(keysDown & KEY_B)){
             returningToSettings = false;
             inSettingsMenu = true;
         }
@@ -1537,7 +1539,7 @@ public:
     }
 
     virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
-        if (runningInterpreter.load(std::memory_order_acquire)) return handleRunningInterpreter(keysHeld);
+        if (runningInterpreter.load(std::memory_order_acquire)) return handleRunningInterpreter(keysDown);
         if (lastRunningInterpreter) {
             isDownloadCommand = false;
             lastSelectedListItem->setValue(commandSuccess ? CHECKMARK_SYMBOL : CROSSMARK_SYMBOL);
@@ -1556,10 +1558,10 @@ public:
                 simulatedMenuComplete = true;
             }
             if (simulatedBack && !simulatedBackComplete) {
-                keysHeld |= KEY_B;
+                keysDown |= KEY_B;
                 simulatedBack = false;
             }
-            if ((keysHeld & KEY_B) && !stillTouching) {
+            if ((keysDown & KEY_B) && !stillTouching) {
                 allowSlide = unlockedSlide = false;
                 inScriptMenu = false;
                 if (isFromPackage) {
@@ -1680,6 +1682,7 @@ private:
     std::string listString, listStringOn, listStringOff;
     std::string jsonString, jsonStringOn, jsonStringOff;
     std::vector<std::string> selectedItemsList;
+    std::string hexPath;
 
     bool isMini = false;
 
@@ -1722,12 +1725,20 @@ public:
         
 
         for (auto& cmd : commands) {
+            //if (currentSection == GLOBAL_STR)
+            //    applyPlaceholderReplacements(cmd, hexPath, iniPath, listString, listPath, jsonString, jsonPath);
+            //else if (currentSection == ON_STR)
+            //    applyPlaceholderReplacements(cmd, hexPath, iniPathOn, listStringOn, listPathOn, jsonStringOn, jsonPathOn);
+            //else if (currentSection == OFF_STR)
+            //    applyPlaceholderReplacements(cmd, hexPath, iniPathOff, listStringOff, listPathOff, jsonStringOff, jsonPathOff);
+
+            
             for (auto& arg : cmd) {
                 // Replace general placeholders
                 replacePlaceholdersInArg(arg, generalPlaceholders);
                 
                 // Replace button/arrow placeholders from the global map
-                replacePlaceholdersInArg(arg, symbolPlaceholders);
+                //replacePlaceholdersInArg(arg, symbolPlaceholders);
             }
 
             commandName = cmd[0];
@@ -2386,7 +2397,7 @@ public:
 
     virtual bool handleInput(u64 keysDown, u64 keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
         if (runningInterpreter.load(std::memory_order_acquire)) {
-            return handleRunningInterpreter(keysHeld);
+            return handleRunningInterpreter(keysDown);
         }
         if (lastRunningInterpreter) {
             isDownloadCommand = false;
@@ -2455,11 +2466,11 @@ public:
             }
 
             if (simulatedBack && !simulatedBackComplete) {
-                keysHeld |= KEY_B;
+                keysDown |= KEY_B;
                 simulatedBack = false;
             }
 
-            if ((keysHeld & KEY_B) && !stillTouching) {
+            if ((keysDown & KEY_B) && !stillTouching) {
                 allowSlide = unlockedSlide = false;
 
                 inSelectionMenu = false;
@@ -2491,7 +2502,7 @@ public:
             }
         }
 
-		if (returningToSelectionMenu && !(keysHeld & KEY_B)){
+		if (returningToSelectionMenu && !(keysDown & KEY_B)){
             returningToSelectionMenu = false;
             inSelectionMenu = true;
         }
@@ -2604,6 +2615,8 @@ bool drawCommandsMenu(std::unique_ptr<tsl::elm::List>& list,
     std::string jsonPath, jsonPathOn, jsonPathOff;
     std::string jsonKey, jsonKeyOn, jsonKeyOff;
     
+    std::string iniFilePath;
+
     std::string optionName;
     std::vector<std::vector<std::string>> commands, commandsOn, commandsOff;
     std::vector<std::vector<std::string>> tableData;
@@ -2908,7 +2921,9 @@ bool drawCommandsMenu(std::unique_ptr<tsl::elm::List>& list,
                 {"{soc_iddq}", ult::to_string(socIDDQ)},
                 {"{title_id}", getTitleIdAsString()}
             };
-            
+
+            //std::string hexPath, listString, listPath, jsonString, jsonPath; // passed as dummy variables
+
             // Initial processing of commands (DUPLICATE CODE)
             for (auto& cmd : commands) {
                 for (auto& arg : cmd) {
@@ -2916,8 +2931,10 @@ bool drawCommandsMenu(std::unique_ptr<tsl::elm::List>& list,
                     replacePlaceholdersInArg(arg, generalPlaceholders);
                     
                     // Replace button/arrow placeholders from the global map
-                    replacePlaceholdersInArg(arg, symbolPlaceholders);
+                    //replacePlaceholdersInArg(arg, symbolPlaceholders);
                 }
+                
+                //applyPlaceholderReplacements(cmd, hexPath, iniFilePath, listString, listPath, jsonString, jsonPath);
 
                 commandName = cmd[0];
                 
@@ -3051,7 +3068,10 @@ bool drawCommandsMenu(std::unique_ptr<tsl::elm::List>& list,
                     }
                     
                     if (cmd.size() > 1) {
-                        if (commandName == "file_source") {
+                        if (commandName == "ini_file") {
+                            iniFilePath = cmd[1];
+                            preprocessPath(iniFilePath, packagePath);
+                        } else if (commandName == "file_source") {
                             if (currentSection == GLOBAL_STR) {
                                 pathPattern = cmd[1];
                                 preprocessPath(pathPattern, packagePath);
@@ -3903,7 +3923,7 @@ public:
     virtual bool handleInput(uint64_t keysDown, uint64_t keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
         
         if (runningInterpreter.load(std::memory_order_acquire)) {
-            return handleRunningInterpreter(keysHeld);
+            return handleRunningInterpreter(keysDown);
         }
         //if (lastRunningInterpreter) {
         //    //while (!interpreterThreadExit.load(std::memory_order_acquire)) {svcSleepThread(50'000'000);}
@@ -4013,11 +4033,11 @@ public:
             
             if (simulatedNextPage && !simulatedNextPageComplete) {
                 if (currentPage == LEFT_STR) {
-                    keysHeld |= KEY_DRIGHT;
+                    keysDown |= KEY_DRIGHT;
                     //simulatedNextPage = false;
                 }
                 else if (currentPage == RIGHT_STR) {
-                    keysHeld |= KEY_DLEFT;
+                    keysDown |= KEY_DLEFT;
                     //simulatedNextPage = false;
                 }
                 else {
@@ -4026,7 +4046,7 @@ public:
                 }
             }
             if (currentPage == LEFT_STR) {
-                if ((keysHeld & KEY_RIGHT) && !(keysHeld & ~KEY_RIGHT & ~KEY_R & ALL_KEYS_MASK) && !stillTouching && (((!allowSlide && onTrackBar && !unlockedSlide) || (keysHeld & KEY_R)) || !onTrackBar || simulatedNextPage)) {
+                if ((keysDown & KEY_RIGHT) && !(keysDown & ~KEY_RIGHT & ~KEY_R & ALL_KEYS_MASK) && !stillTouching && (((!allowSlide && onTrackBar && !unlockedSlide) || (keysDown & KEY_R)) || !onTrackBar || simulatedNextPage)) {
                     simulatedNextPage = false;
                     allowSlide = unlockedSlide = false;
                     lastPage = RIGHT_STR;
@@ -4039,7 +4059,7 @@ public:
                     return true;
                 }
             } else if (currentPage == RIGHT_STR) {
-                if ((keysHeld & KEY_LEFT) && !(keysHeld & ~KEY_LEFT & ~KEY_R & ALL_KEYS_MASK) && !stillTouching && (((!allowSlide && onTrackBar && !unlockedSlide) || (keysHeld & KEY_R)) || !onTrackBar || simulatedNextPage)) {
+                if ((keysDown & KEY_LEFT) && !(keysDown & ~KEY_LEFT & ~KEY_R & ALL_KEYS_MASK) && !stillTouching && (((!allowSlide && onTrackBar && !unlockedSlide) || (keysDown & KEY_R)) || !onTrackBar || simulatedNextPage)) {
                     simulatedNextPage = false;
                     allowSlide = unlockedSlide = false;
                     lastPage = LEFT_STR;
@@ -4068,10 +4088,10 @@ public:
             
             if (!usingPages || (usingPages && lastPage == LEFT_STR)) {
                 if (simulatedBack && !simulatedBackComplete) {
-                    keysHeld |= KEY_B;
+                    keysDown |= KEY_B;
                     simulatedBack = false;
                 }
-                if ((keysHeld & KEY_B) && !stillTouching) {
+                if ((keysDown & KEY_B) && !stillTouching) {
                     handleForwarderFooter();
 
                     allowSlide = unlockedSlide = false;
@@ -4103,10 +4123,10 @@ public:
                 }
             } else if (usingPages && lastPage == RIGHT_STR) {
                 if (simulatedBack && !simulatedBackComplete) {
-                    keysHeld |= KEY_B;
+                    keysDown |= KEY_B;
                     simulatedBack = false;
                 }
-                if ((keysHeld & KEY_B) && !stillTouching) {
+                if ((keysDown & KEY_B) && !stillTouching) {
                     handleForwarderFooter();
 
                     allowSlide = unlockedSlide = false;
@@ -4154,10 +4174,10 @@ public:
             
             if (!usingPages || (usingPages && lastPage == LEFT_STR)) {
                 if (simulatedBack && !simulatedBackComplete) {
-                    keysHeld |= KEY_B;
+                    keysDown |= KEY_B;
                     simulatedBack = false;
                 }
-                if ((keysHeld & KEY_B) && !stillTouching) {
+                if ((keysDown & KEY_B) && !stillTouching) {
                     handleForwarderFooter();
 
                     allowSlide = unlockedSlide = false;
@@ -4171,10 +4191,10 @@ public:
                 }
             } else if (usingPages && lastPage == RIGHT_STR) {
                 if (simulatedBack && !simulatedBackComplete) {
-                    keysHeld |= KEY_B;
+                    keysDown |= KEY_B;
                     simulatedBack = false;
                 }
-                if ((keysHeld & KEY_B) && !stillTouching) {
+                if ((keysDown & KEY_B) && !stillTouching) {
                     handleForwarderFooter();
 
                     allowSlide = unlockedSlide = false;
@@ -4189,22 +4209,26 @@ public:
                 }
             }
         }
-        if (returningToPackage && !returningToSubPackage && !(keysHeld & KEY_B)){
+        if (returningToPackage && !returningToSubPackage && !(keysDown & KEY_B)){
             //lastPackageMenu = "packageMenu";
             lastPackageMenu = "";
             returningToPackage = false;
+            returningToSubPackage = false;
             inPackageMenu = true;
+            inSubPackageMenu = false;
+            simulatedBackComplete = true;
             if (nestedMenuCount == 0 && nestedLayer == 0) {
                 lastPackagePath = packagePath;
                 lastPackageName = PACKAGE_FILENAME;
             }
         }
         
-        if (returningToSubPackage && !(keysHeld & KEY_B)){
+        if (returningToSubPackage && !(keysDown & KEY_B)){
             //lastPackageMenu = "subPackageMenu";
             lastPackageMenu = "";
             returningToPackage = false;
             returningToSubPackage = false;
+            inPackageMenu = false;
             inSubPackageMenu = true;
             simulatedBackComplete = true;
             if (nestedMenuCount == 0 && nestedLayer == 0) {
@@ -5231,7 +5255,7 @@ public:
     virtual bool handleInput(uint64_t keysDown, uint64_t keysHeld, touchPosition touchInput, JoystickPosition leftJoyStick, JoystickPosition rightJoyStick) override {
 
         if (runningInterpreter.load(std::memory_order_acquire))
-            return handleRunningInterpreter(keysHeld);
+            return handleRunningInterpreter(keysDown);
         
         //if (lastRunningInterpreter) {
         //    ////while (!interpreterThreadExit.load(std::memory_order_acquire)) {svcSleepThread(50'000'000);}
@@ -5301,11 +5325,11 @@ public:
             }
 
             if (simulatedBack && !simulatedBackComplete) {
-                keysHeld |= KEY_B;
+                keysDown |= KEY_B;
                 simulatedBack = false;
             }
 
-            if ((keysHeld & KEY_B) && !stillTouching) {
+            if ((keysDown & KEY_B) && !stillTouching) {
                 allowSlide = unlockedSlide = false;
                 returningToMain = true;
                 tsl::goBack();
@@ -5331,11 +5355,11 @@ public:
                 if (simulatedNextPage && !simulatedNextPageComplete) {
                     if (!usePageSwap) {
                         if (menuMode != PACKAGES_STR) {
-                            keysHeld |= KEY_DRIGHT;
+                            keysDown |= KEY_DRIGHT;
                             //simulatedNextPage = false;
                         }
                         else if (menuMode != OVERLAYS_STR) {
-                            keysHeld |= KEY_DLEFT;
+                            keysDown |= KEY_DLEFT;
                             //simulatedNextPage = false;
                         } else {
                             //simulatedNextPage = false;
@@ -5343,11 +5367,11 @@ public:
                         }
                     } else {
                         if (menuMode != PACKAGES_STR) {
-                            keysHeld |= KEY_DLEFT;
+                            keysDown |= KEY_DLEFT;
                             //simulatedNextPage = false;
                         }
                         else if (menuMode != OVERLAYS_STR) {
-                            keysHeld |= KEY_DRIGHT;
+                            keysDown |= KEY_DRIGHT;
                             //simulatedNextPage = false;
                         } else {
                             //simulatedNextPage = false;
@@ -5356,7 +5380,7 @@ public:
                     }
                 }
 
-                if ((keysHeld & KEY_RIGHT) && !(keysHeld & ~KEY_RIGHT & ~KEY_R & ALL_KEYS_MASK) && !stillTouching && (((!allowSlide && !unlockedSlide && onTrackBar) || (keysHeld & KEY_R)) || !onTrackBar || simulatedNextPage)) {
+                if ((keysDown & KEY_RIGHT) && !(keysDown & ~KEY_RIGHT & ~KEY_R & ALL_KEYS_MASK) && !stillTouching && (((!allowSlide && !unlockedSlide && onTrackBar) || (keysDown & KEY_R)) || !onTrackBar || simulatedNextPage)) {
                     simulatedNextPage = false;
                     allowSlide = unlockedSlide = false;
                     if (!usePageSwap) {
@@ -5383,7 +5407,7 @@ public:
                         }
                     }
                 }
-                if ((keysHeld & KEY_LEFT) && !(keysHeld & ~KEY_LEFT & ~KEY_R & ALL_KEYS_MASK) && !stillTouching && (((!allowSlide && onTrackBar && !unlockedSlide) || (keysHeld & KEY_R)) || !onTrackBar || simulatedNextPage)) {
+                if ((keysDown & KEY_LEFT) && !(keysDown & ~KEY_LEFT & ~KEY_R & ALL_KEYS_MASK) && !stillTouching && (((!allowSlide && onTrackBar && !unlockedSlide) || (keysDown & KEY_R)) || !onTrackBar || simulatedNextPage)) {
                     simulatedNextPage = false;
                     allowSlide = unlockedSlide = false;
                     if (!usePageSwap) {
@@ -5413,11 +5437,11 @@ public:
                 simulatedNextPage = false;
 
                 if (simulatedBack && !simulatedBackComplete) {
-                    keysHeld |= KEY_B;
+                    keysDown |= KEY_B;
                     simulatedBack = false;
                 }
 
-                if ((keysHeld & KEY_B) && !stillTouching) {
+                if ((keysDown & KEY_B) && !stillTouching) {
                     allowSlide = unlockedSlide = false;
                     tsl::setNextOverlay(OVERLAY_PATH+"ovlmenu.ovl");
                     exitingUltrahand = true;
@@ -5427,11 +5451,11 @@ public:
                 }
 
                 if (simulatedMenu && !simulatedMenuComplete) {
-                    keysHeld |= SYSTEM_SETTINGS_KEY;
+                    keysDown |= SYSTEM_SETTINGS_KEY;
                     simulatedMenu = false;
                 }
 
-                if ((keysHeld & SYSTEM_SETTINGS_KEY) && !stillTouching) {
+                if ((keysDown & SYSTEM_SETTINGS_KEY) && !stillTouching) {
                     inMainMenu = false;
                     tsl::changeTo<UltrahandSettingsMenu>();
                     //if (menuMode != PACKAGES_STR) startInterpreterThread();
@@ -5455,11 +5479,11 @@ public:
                 }
 
                 if (simulatedBack && !simulatedBackComplete) {
-                    keysHeld |= KEY_B;
+                    keysDown |= KEY_B;
                     simulatedBack = false;
                 }
 
-                if ((keysHeld & KEY_B) && !stillTouching) {
+                if ((keysDown & KEY_B) && !stillTouching) {
                     if (parseValueFromIniSection(ULTRAHAND_CONFIG_INI_PATH, ULTRAHAND_PROJECT_NAME, IN_HIDDEN_OVERLAY_STR) == FALSE_STR) {
                         inMainMenu = true;
                         inHiddenMode = false;
@@ -5491,14 +5515,14 @@ public:
             }
         }
         
-        if (freshSpawn && !(keysHeld & KEY_B))
+        if (freshSpawn && !(keysDown & KEY_B))
             freshSpawn = false;
         
-        if (returningToMain && !(keysHeld & KEY_B)){
+        if (returningToMain && !(keysDown & KEY_B)){
             returningToMain = false;
             inMainMenu = true;
         }
-        if (returningToHiddenMain && !(keysHeld & KEY_B)){
+        if (returningToHiddenMain && !(keysDown & KEY_B)){
             returningToHiddenMain = false;
             inHiddenMode = true;
         }
