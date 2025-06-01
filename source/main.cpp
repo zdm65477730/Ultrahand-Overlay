@@ -4242,6 +4242,24 @@ public:
             tsl::setNextOverlay(OVERLAY_PATH+"ovlmenu.ovl");
             tsl::Overlay::get()->close();
         }
+
+
+        if (simulatedBack && !simulatedBackComplete) {
+            keysDown |= KEY_B;
+            simulatedBack = false;
+        }
+        if ((keysDown & KEY_B) && !stillTouching) { // for catching lost navigations
+
+            allowSlide = unlockedSlide = false;
+            inSubPackageMenu = false;
+            returningToPackage = true;
+            lastMenu = "packageMenu";
+            //tsl::goBack();
+            tsl::goBack();
+            
+            simulatedBackComplete = true;
+            return true;
+        }
         
         //svcSleepThread(10'000'000);
         return false;
