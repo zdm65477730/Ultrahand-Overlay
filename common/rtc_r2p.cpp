@@ -143,6 +143,7 @@ namespace Max77620Rtc {
 		Result rc = 0;
 
 		I2cSession session = {};
+		i2cInitialize();
 		if (R_FAILED(rc = i2cOpenSession(&session, I2cDevice_Max77620Rtc))) {
 			//std::printf("i2c: Failed to open i2c session: 2%03u-%04u\n", R_MODULE(rc), R_DESCRIPTION(rc));
 			i2cExit();
@@ -167,6 +168,10 @@ namespace Max77620Rtc {
 
 		i2csessionClose(&session);
 
-		return ret && R_SUCCEEDED(spsmShutdown(true));
+		i2cExit();
+		spsmInitialize();
+		rc = spsmShutdown(true);
+		spsmExit();
+		return ret && R_SUCCEEDED(rc);
 	}
 }
