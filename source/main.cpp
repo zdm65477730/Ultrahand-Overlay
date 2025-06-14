@@ -825,7 +825,7 @@ public:
                         copyPercentage.store(-1, std::memory_order_release);
                         initializeTheme();
                         tsl::initializeThemeVars();
-                        reloadMenu = reloadMenu2 = true;
+                        //reloadMenu = reloadMenu2 = true;
                         lastSelectedListItem->setValue("");
                         selectedListItem->setValue(themeName);
                         listItemRaw->setValue(CHECKMARK_SYMBOL);
@@ -910,7 +910,7 @@ public:
                         //clearWallpaperData();
                         //initializeTheme();
                         //tsl::initializeThemeVars();
-                        reloadMenu = reloadMenu2 = true;
+                        //reloadMenu = reloadMenu2 = true;
                         lastSelectedListItem->setValue("");
                         selectedListItem->setValue(wallpaperName);
                         listItemRaw->setValue(CHECKMARK_SYMBOL);
@@ -976,6 +976,7 @@ public:
         //return rootFrame.release();
 
         auto rootFrame = new tsl::elm::OverlayFrame(CAPITAL_ULTRAHAND_PROJECT_NAME, versionLabel);
+        list->jumpToItem("", "");
         rootFrame->setContent(list.release());
         return rootFrame;
 
@@ -2574,6 +2575,8 @@ public:
                "",
                packageHeader.color);
         }
+
+        list->jumpToItem("", "");
         
         rootFrame->setContent(list.release());
         return rootFrame;
@@ -5739,6 +5742,7 @@ public:
 
         //ASSERT_FATAL(socketInitializeDefault());
         //initializeCurl();
+
 
         // Load and execute "boot" commands if they exist
         //executeIniCommands(PACKAGE_PATH + BOOT_PACKAGE_FILENAME, "boot");
