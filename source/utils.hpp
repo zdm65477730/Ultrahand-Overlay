@@ -459,7 +459,10 @@ std::string getLocalIpAddress() {
 
     
     // Get the current IP address
+    if (R_FAILED(rc = nifmInitialize(NifmServiceType_User))) // for local IP
+        return UNAVAILABLE_SELECTION;
     rc = nifmGetCurrentIpAddress(&ipAddress);
+    nifmExit();
     if (R_SUCCEEDED(rc)) {
         // Convert the IP address to a string
         char ipStr[16];
@@ -468,7 +471,6 @@ std::string getLocalIpAddress() {
                  (ipAddress >> 8) & 0xFF,
                  (ipAddress >> 16) & 0xFF,
                  (ipAddress >> 24) & 0xFF);
-        nifmExit();
         return std::string(ipStr);
     } else {
         // Return a default IP address if the IP could not be retrieved
@@ -593,6 +595,7 @@ const char* getStorageInfo(const std::string& storageType) {
 
 void unpackDeviceInfo() {
     u64 packed_version;
+    splInitialize();
     splGetConfig((SplConfigItem)2, &packed_version);
     memoryType = getMemoryType(packed_version);
     //memoryVendor = UNAVAILABLE_SELECTION;
@@ -614,6 +617,7 @@ void unpackDeviceInfo() {
     formatVersion(packed_version, 24, 16, 8, hosVersion);
 
     splGetConfig((SplConfigItem)65007, &packed_version);
+    splExit();
     usingEmunand = (packed_version != 0);
 
 
@@ -3740,6 +3744,15 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
             std::string destinationPath = cmd[2];
             preprocessPath(destinationPath, packagePath);
             bool downloadSuccess = false;
+            Result rc;
+            if (R_FAILED(rc = socketInitializeDefault())) {
+                return;
+            }
+            if (R_FAILED(rc = nifmInitialize(NifmServiceType_User))) {
+                socketExit();
+                return;
+            }
+            initializeCurl();
             for (size_t i = 0; i < 3; ++i) {
                 downloadSuccess = downloadFile(fileUrl, destinationPath);
                 if (abortDownload.load(std::memory_order_acquire)) {
@@ -3748,6 +3761,9 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                 }
                 if (downloadSuccess) break;
             }
+            cleanupCurl();
+            nifmExit();
+            socketExit();
             commandSuccess = downloadSuccess && commandSuccess;
         }
     } else if (commandName == "unzip") {
@@ -3879,9 +3895,7 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
             }
         }
         
-        i2cExit();
-        splExit();
-        fsdevUnmountAll();
+        spsmInitialize();
         spsmShutdown(SpsmShutdownMode_Reboot);
         spsmExit();
     } else if (commandName == "shutdown") {
@@ -3892,9 +3906,7 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                 powerOffAllControllers();
             }
         } else {
-            //spsmInitialize();
-            splExit();
-            fsdevUnmountAll();
+            spsmInitialize();
             spsmShutdown(SpsmShutdownMode_Normal);
             spsmExit();
         }
