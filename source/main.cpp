@@ -150,7 +150,59 @@ static tsl::elm::ListItem* forwarderListItem;
 
 static std::atomic<bool> lastRunningInterpreter{false};
 
+static void switchTencentVerToGlobalVer() {
+    Result rc;
+    constexpr u32 ExosphereEmummcType = 65007;
+    u64 is_emummc;
+    bool is_do_for_ofw = false;
 
+    std::string cfgFilePath = std::string("sdmc:/config/") + APPTITLE + "/" + "enable_for_ofw.flag";
+    if (std::filesystem::exists(cfgFilePath))
+        is_do_for_ofw = true;
+
+    if (R_FAILED(rc = splInitialize()))
+        fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+
+    if (R_FAILED(rc = splGetConfig(static_cast<SplConfigItem>(ExosphereEmummcType), &is_emummc))) {
+        splExit();
+        fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+    }
+    splExit();
+
+    if (!is_emummc && !is_do_for_ofw)
+        return;
+
+    rc = setsysInitialize();
+    if (R_SUCCEEDED(rc)) {
+        bool isTencentVersion = false;
+        if (R_SUCCEEDED(rc = setsysGetT(&isTencentVersion))) {
+            if (isTencentVersion) {
+                if (R_SUCCEEDED(rc = setsysSetT(false))) {
+                    if (R_SUCCEEDED(rc = setsysSetRegionCode(SetRegion_HTK))) {
+                        if (R_SUCCEEDED(rc = spsmInitialize())) {
+                            spsmShutdown(true);
+                            spsmExit();
+                            setsysExit();
+                        } else {
+                            setsysExit();
+                            fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+                        }
+                    } else {
+                        setsysExit();
+                        fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+                    }
+                } else {
+                    setsysExit();
+                    fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+                }
+            }
+        } else {
+            setsysExit();
+            fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+        }
+        setsysExit();
+    }
+}
 
 template<typename Map, typename Func = std::function<std::string(const std::string&)>, typename... Args>
 std::string getValueOrDefault(const Map& data, const std::string& key, const std::string& defaultValue, Func formatFunc = nullptr, Args... args) {
@@ -5558,7 +5610,68 @@ public:
             // load overlaySet from OVERLAYS_INI_FILEPATH.  this will be the overlayFilenames
             std::set<std::string> overlaySet;
             //std::set<std::string> hiddenOverlaySet;
-            
+
+            std::string base_lang{"en"};
+            tsl::hlp::doWithSmSession([&base_lang] {
+                Result rc;
+                if(R_SUCCEEDED(rc = setInitialize())) {
+                    u64 languageCode;
+                    if (R_SUCCEEDED(rc = setGetSystemLanguage(&languageCode))) {
+                        SetLanguage language{SetLanguage_ENUS};
+                        if (R_SUCCEEDED(rc = setMakeLanguage(languageCode, &language))) {
+                            switch (language) {
+                            case SetLanguage_JA:
+                                base_lang = "ja";
+                                break;
+                            case SetLanguage_ENUS:
+                            case SetLanguage_ENGB:
+                                base_lang = "en";
+                                break;
+                            case SetLanguage_FR:
+                            case SetLanguage_FRCA:
+                                base_lang = "fr";
+                                break;
+                            case SetLanguage_DE:
+                                base_lang = "de";
+                                break;
+                            case SetLanguage_IT:
+                                base_lang = "it";
+                                break;
+                            case SetLanguage_ES:
+                            case SetLanguage_ES419:
+                                base_lang = "es";
+                                break;
+                            case SetLanguage_ZHCN:
+                            case SetLanguage_ZHHANS:
+                                base_lang = "zh-Hans";
+                                break;
+                            case SetLanguage_KO:
+                                base_lang = "ko";
+                                break;
+                            case SetLanguage_NL:
+                                base_lang = "nl";
+                                break;
+                            case SetLanguage_PT:
+                            case SetLanguage_PTBR:
+                                base_lang = "pt";
+                                break;
+                            case SetLanguage_RU:
+                                base_lang = "ru";
+                                break;
+                            case SetLanguage_ZHTW:
+                            case SetLanguage_ZHHANT:
+                                base_lang = "zh-Hant";
+                                break;
+                            default:
+                                base_lang = "en";
+                                break;
+                            }
+                        }
+                    }
+                    setExit();
+                }
+            });
+
             // Load subdirectories
             if (!overlayFiles.empty()) {
                 // Load the INI file and parse its content.
@@ -5591,6 +5704,17 @@ public:
                 for (auto& overlayFile : overlayFiles) {
                     overlayFileName = getNameFromPath(overlayFile);
                     overlayFile = "";
+
+                    auto [result, overlayName, overlayVersion, usingLibUltrahand] = getOverlayInfo(OVERLAY_PATH + overlayFileName);
+                    if (result != ResultSuccess) continue;
+                    std::string pluginLangPath = std::string("sdmc:/switch/.overlays/lang/") + overlayName + "/" + base_lang + ".json";
+                    if (isFileOrDirectory(pluginLangPath)) {
+                        std::string pluginName = getStringFromJsonFile(pluginLangPath, "PluginName");
+                        if (pluginName != "") {
+                            overlayName = pluginName;
+                        }
+                    }
+
                     it = overlaysIniData.find(overlayFileName);
                     if (it == overlaysIniData.end()) {
                         // Initialization of new entries IN MEMORY (no file I/O)
@@ -5603,10 +5727,7 @@ public:
                         overlaySection["custom_name"] = "";
                         overlaySection["custom_version"] = "";
                         overlaysNeedsUpdate = true;
-                        
-                        const auto& [result, overlayName, overlayVersion, usingLibUltrahand] = getOverlayInfo(OVERLAY_PATH + overlayFileName);
-                        if (result != ResultSuccess) continue;
-                
+
                         // Use retrieved overlay info
                         assignedOverlayName = overlayName;
                         assignedOverlayVersion = overlayVersion;
@@ -5626,9 +5747,6 @@ public:
                             launchArgs = getValueOrDefault(it->second, LAUNCH_ARGS_STR, "");
                             customName = getValueOrDefault(it->second, "custom_name", "");
                             customVersion = getValueOrDefault(it->second, "custom_version", "");
-                            
-                            const auto& [result, overlayName, overlayVersion, usingLibUltrahand] = getOverlayInfo(OVERLAY_PATH + overlayFileName);
-                            if (result != ResultSuccess) continue;
                             
                             assignedOverlayName = !customName.empty() ? customName : overlayName;
                             assignedOverlayVersion = !customVersion.empty() ? customVersion : overlayVersion;
@@ -6814,9 +6932,6 @@ public:
     virtual void initServices() override {
         tsl::overrideBackButton = true; // for properly overriding the always go back functionality of KEY_B
 
-        ASSERT_FATAL(socketInitializeDefault());
-        initializeCurl();
-
         // read commands from root package's boot_package.ini
         if (firstBoot) {
             // Load and execute "initial_boot" commands if they exist
@@ -6844,9 +6959,6 @@ public:
     virtual void exitServices() override {
         if (exitingUltrahand.load(acquire))
             executeIniCommands(PACKAGE_PATH + EXIT_PACKAGE_FILENAME, "exit");
-
-        cleanupCurl();
-        socketExit();
     }
     
     /**
@@ -6999,6 +7111,7 @@ public:
  * @return The application's exit code.
  */
 int main(int argc, char* argv[]) {
+    switchTencentVerToGlobalVer();
     for (u8 arg = 0; arg < argc; arg++) {
         if (argv[arg][0] != '-') continue;  // Check first character
         
