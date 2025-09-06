@@ -41,7 +41,9 @@ namespace util {
     
     bool IsErista() { // CUSTOM MODIFICATION
         SetSysProductModel model = SetSysProductModel_Invalid;
+        setsysInitialize();
         setsysGetProductModel(&model);
+        setsysExit();
         
         if (model == SetSysProductModel_Nx || \
             model == SetSysProductModel_Copper)
@@ -53,7 +55,9 @@ namespace util {
     
     bool IsMariko() { // CUSTOM MODIFICATION
         SetSysProductModel model = SetSysProductModel_Invalid;
+        setsysInitialize();
         setsysGetProductModel(&model);
+        setsysExit();
         
         if (model == SetSysProductModel_Iowa || \
             model == SetSysProductModel_Hoag || \
@@ -97,8 +101,12 @@ namespace util {
     
         u64 version = 0;
     
-        if (R_FAILED(splGetConfig(static_cast<SplConfigItem>(65000), &version)))
+        splInitialize();
+        if (R_FAILED(splGetConfig(static_cast<SplConfigItem>(65000), &version))) {
+            splExit();
             return false;
+        }
+        splExit();
     
         const u32 version_minor = (version >> 48) & 0xff;
         const u32 version_major = (version >> 56) & 0xff;
