@@ -542,7 +542,10 @@ std::string getLocalIpAddress() {
     ASSERT_FATAL(nifmInitialize(NifmServiceType_User)); // for local IP
 
     // Get the current IP address
+    if (R_FAILED(rc = nifmInitialize(NifmServiceType_User))) // for local IP
+        return UNAVAILABLE_SELECTION;
     rc = nifmGetCurrentIpAddress(&ipAddress);
+    nifmExit();
     if (R_SUCCEEDED(rc)) {
         // Convert the IP address to a string
         char ipStr[16];
@@ -551,7 +554,6 @@ std::string getLocalIpAddress() {
                  (ipAddress >> 8) & 0xFF,
                  (ipAddress >> 16) & 0xFF,
                  (ipAddress >> 24) & 0xFF);
-        nifmExit();
         return std::string(ipStr);
     } else {
         // Return a default IP address if the IP could not be retrieved
@@ -686,6 +688,7 @@ const char* getStorageInfo(const std::string& storageType) {
 
 void unpackDeviceInfo() {
     u64 packed_version;
+    splInitialize();
     splGetConfig((SplConfigItem)2, &packed_version);
     const std::string memoryType = getMemoryType(packed_version);
     //memoryVendor = UNAVAILABLE_SELECTION;
@@ -709,6 +712,7 @@ void unpackDeviceInfo() {
     //usingHOS21orHigher = (strcmp(hosVersion, "20.0.0") >= 0); // set global variable
 
     splGetConfig((SplConfigItem)65007, &packed_version);
+    splExit();
     usingEmunand = (packed_version != 0);
     fuseDumpToIni();
     
@@ -4413,8 +4417,16 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
             std::string destinationPath = cmd[2];
             preprocessPath(destinationPath, packagePath);
             bool downloadSuccess = false;
-
             if (!ult::limitedMemory) {
+                Result rc;
+                if (R_FAILED(rc = socketInitializeDefault())) {
+                    return;
+                }
+                if (R_FAILED(rc = nifmInitialize(NifmServiceType_User))) {
+                    socketExit();
+                    return;
+                }
+                initializeCurl();
                 for (size_t i = 0; i < 3; ++i) {
                     downloadSuccess = downloadFile(fileUrl, destinationPath);
                     if (abortDownload.load(std::memory_order_acquire)) {
@@ -4428,6 +4440,9 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                         svcSleepThread(200'000'000);
                     }
                 }
+                cleanupCurl();
+                nifmExit();
+                socketExit();
             }
             commandSuccess.store(
                 downloadSuccess &&
@@ -4499,7 +4514,19 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
         if (launchUpdaterPayload) {
             const std::string rebootOption = PAYLOADS_PATH + "ultrahand_updater.bin";
             if (!isFile(rebootOption)) {
+                Result rc;
+                if (R_FAILED(rc = socketInitializeDefault())) {
+                    return;
+                }
+                if (R_FAILED(rc = nifmInitialize(NifmServiceType_User))) {
+                    socketExit();
+                    return;
+                }
+                initializeCurl();
                 downloadFile(UPDATER_PAYLOAD_URL, PAYLOADS_PATH, true);
+                cleanupCurl();
+                nifmExit();
+                socketExit();
                 downloadPercentage.store(-1, std::memory_order_release);
             }
             if (isFile(rebootOption)) {
@@ -4566,9 +4593,7 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                 Payload::RebootToHekate();
         }
         
-        i2cExit();
-        splExit();
-        fsdevUnmountAll();
+        spsmInitialize();
         spsmShutdown(SpsmShutdownMode_Reboot);
         spsmExit();
     } else if (commandName == "shutdown") {
@@ -4578,8 +4603,7 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                 powerOffAllControllers();
             }
         } else {
-            splExit();
-            fsdevUnmountAll();
+            spsmInitialize();
             spsmShutdown(SpsmShutdownMode_Normal);
             spsmExit();
         }
