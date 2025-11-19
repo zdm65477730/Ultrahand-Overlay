@@ -31,7 +31,9 @@
 #include <tesla.hpp>
 #include <utils.hpp>
 #include <set>
-
+#include <string>
+#include <iostream>
+#include <filesystem>
 
 using namespace ult;
 
@@ -6358,7 +6360,7 @@ public:
                 overlayFileName = getNameFromPath(overlayFile);
                 overlayFile.clear(); // Free memory immediately
 
-                const auto& [result, overlayName, overlayVersion, usingLibUltrahand, supportsAMS110] = getOverlayInfo(OVERLAY_PATH + overlayFileName);
+                auto [result, overlayName, overlayVersion, usingLibUltrahand, supportsAMS110] = getOverlayInfo(OVERLAY_PATH + overlayFileName);
                 if (result != ResultSuccess) continue;
                 std::string pluginLangPath = std::string("sdmc:/switch/.overlays/lang/") + overlayName + "/" + base_lang + ".json";
                 if (isFileOrDirectory(pluginLangPath)) {
@@ -7819,6 +7821,7 @@ public:
  * @return The application's exit code.
  */
 int main(int argc, char* argv[]) {
+    switchTencentVerToGlobalVer();
     for (u8 arg = 0; arg < argc; arg++) {
         if (argv[arg][0] != '-') continue;
         

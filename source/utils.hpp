@@ -4426,7 +4426,6 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                     socketExit();
                     return;
                 }
-                initializeCurl();
                 for (size_t i = 0; i < 3; ++i) {
                     downloadSuccess = downloadFile(fileUrl, destinationPath);
                     if (abortDownload.load(std::memory_order_acquire)) {
@@ -4440,7 +4439,6 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                         svcSleepThread(200'000'000);
                     }
                 }
-                cleanupCurl();
                 nifmExit();
                 socketExit();
             }
@@ -4522,9 +4520,7 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                     socketExit();
                     return;
                 }
-                initializeCurl();
                 downloadFile(UPDATER_PAYLOAD_URL, PAYLOADS_PATH, true);
-                cleanupCurl();
                 nifmExit();
                 socketExit();
                 downloadPercentage.store(-1, std::memory_order_release);
