@@ -6891,7 +6891,7 @@ public:
                 std::remove_if(overlayFiles.begin(), overlayFiles.end(),
                     [&foundOvlmenu](const std::string& file) {
                         const std::string fileName = getNameFromPath(file);
-                        if (!foundOvlmenu && (fileName == "ovlmenu.ovl" || fileName == "sys-patch.ovl" || fileName == "sys-patch-overlay.ovl")) {
+                        if (!foundOvlmenu && (fileName == "ovlmenu.ovl") {
                             foundOvlmenu = true;
                             return true;
                         }
@@ -8402,3 +8402,4 @@ int main(int argc, char* argv[]) {
     }
     return tsl::loop<Overlay, tsl::impl::LaunchFlags::None>(argc, argv);
 }
+
