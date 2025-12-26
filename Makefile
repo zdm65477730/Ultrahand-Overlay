@@ -78,7 +78,7 @@ CFLAGS := -g -Wall -Os -ffunction-sections -fdata-sections -flto \
           -fno-strict-aliasing -frename-registers -falign-functions=16 \
           $(ARCH) $(DEFINES)
 
-CFLAGS += $(INCLUDE) -D__SWITCH__ -DAPP_VERSION="\"$(APP_VERSION)\"" -D_FORTIFY_SOURCE=2
+CFLAGS += $(INCLUDE) -D__SWITCH__ -DAPPTITLE=\"$(APP_TITLE)\" -DAPP_VERSION="\"$(APP_VERSION)\"" -D_FORTIFY_SOURCE=2
 
 
 #---------------------------------------------------------------------------------
@@ -257,23 +257,25 @@ $(BUILD):
 	@[ -d $@ ] || mkdir -p $@
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile MAKEFLAGS="$(filter-out -j% -j,$(MAKEFLAGS)) -j"
 
-	@rm -rf out/
-	@mkdir -p out/switch/.overlays/
-	@cp $(CURDIR)/$(TARGET).ovl out/switch/.overlays/$(TARGET).ovl
+	@rm -rf $(CURDIR)/SdOut
+	@mkdir -p $(CURDIR)/SdOut/switch/.overlays
+	@mkdir -p $(CURDIR)/SdOut/config/$(APP_TITLE)/lang
+	@mkdir -p $(CURDIR)/SdOut/config/$(APP_TITLE)/themes
+	@cp -r ovlmenu.ovl $(CURDIR)/SdOut/switch/.overlays/
+	@cp -r $(CURDIR)/lang/* $(CURDIR)/SdOut/config/$(APP_TITLE)/lang/
+	@cp -r $(CURDIR)/themes/* $(CURDIR)/SdOut/config/$(APP_TITLE)/themes/
+	@cd $(CURDIR)/SdOut; zip -r -q -9 $(APP_TITLE).zip switch config; cd $(CURDIR)
 
 #---------------------------------------------------------------------------------
 clean:
-	@rm -fr $(BUILD) $(TARGET).ovl $(TARGET).nro $(TARGET).nacp $(TARGET).elf
-
-	@rm -rf out/
-	@rm -f $(TARGET).zip
+	@rm -rf $(BUILD) $(CURDIR)/SdOut $(TARGET).ovl $(TARGET).nro $(TARGET).nacp $(TARGET).elf
 
 #---------------------------------------------------------------------------------
 dist: all
 	@echo making dist ...
 
-	@rm -f $(TARGET).zip
-	@cd out; zip -r ../$(TARGET).zip ./*; cd ../
+	@rm -f $(CURDIR)/SdOut/$(APP_TITLE).zip
+	@cd $(CURDIR)/SdOut; zip -r -q -9 $(APP_TITLE).zip switch config; cd $(CURDIR)
 #---------------------------------------------------------------------------------
 else
 .PHONY: all
