@@ -635,6 +635,7 @@ const char* getStorageInfo(const std::string& storageType) {
 
 void unpackDeviceInfo() {
     u64 packed_version;
+    splInitialize();
     splGetConfig((SplConfigItem)2, &packed_version);
     const std::string memoryType = getMemoryType(packed_version);
     
@@ -653,6 +654,7 @@ void unpackDeviceInfo() {
     formatVersion(packed_version, 24, 16, 8, hosVersion);
 
     splGetConfig((SplConfigItem)65007, &packed_version);
+    splExit();
     usingEmunand = (packed_version != 0);
     fuseDumpToIni();
     
@@ -4791,12 +4793,12 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                     if (rebootOption.empty())
                         Payload::RebootToHekate();
                 }
-                
-                i2cExit();
-                splExit();
+
                 fsdevUnmountAll();
-                spsmShutdown(SpsmShutdownMode_Reboot);
-                spsmExit();
+                if (R_SUCCEEDED(spsmInitialize())) {
+                    spsmShutdown(SpsmShutdownMode_Reboot);
+                    spsmExit();
+                }
                 return;
             }
             break;
@@ -4857,10 +4859,11 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                         powerOffAllControllers();
                     }
                 } else {
-                    splExit();
                     fsdevUnmountAll();
-                    spsmShutdown(SpsmShutdownMode_Normal);
-                    spsmExit();
+                    if (R_SUCCEEDED(spsmInitialize())) {
+                        spsmShutdown(SpsmShutdownMode_Normal);
+                        spsmExit();
+                    }
                 }
                 return;
             }

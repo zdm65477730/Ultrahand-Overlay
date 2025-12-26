@@ -140,6 +140,7 @@ namespace Max77620Rtc {
         Result rc = 0;
 
         I2cSession session = {};
+        i2cInitialize();
         if (R_FAILED(rc = i2cOpenSession(&session, I2cDevice_Max77620Rtc))) {
             i2cExit();
             return false;
@@ -163,6 +164,10 @@ namespace Max77620Rtc {
 
         i2csessionClose(&session);
 
-        return ret && R_SUCCEEDED(spsmShutdown(true));
-    }
+		i2cExit();
+		spsmInitialize();
+		rc = spsmShutdown(true);
+		spsmExit();
+		return ret && R_SUCCEEDED(rc);
+	}
 }
