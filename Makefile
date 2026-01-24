@@ -11,7 +11,7 @@
 #   GitHub Repository: https://github.com/ppkantorski/Ultrahand-Overlay
 #
 # Licensed under GPLv2
-# Copyright (c) 2023-2025 ppkantorski
+# Copyright (c) 2023-2026 ppkantorski
 ##################################################################################
 
 #---------------------------------------------------------------------------------
@@ -57,7 +57,7 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 APP_TITLE	:= Ultrahand
 APP_AUTHOR	:= ppkantorski
-APP_VERSION	:= 2.2.7-pre-release
+APP_VERSION	:= 2.2.7
 TARGET		:= ovlmenu
 BUILD		:= build
 SOURCES		:= source common

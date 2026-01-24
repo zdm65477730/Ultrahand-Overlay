@@ -4782,10 +4782,18 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                 if (cmdSize >= 2) {
                     std::string sourcePath = cmd[1];
                     preprocessPath(sourcePath, packagePath);
-                    commandSuccess.store(
-                        pchtxt2cheat(sourcePath) && commandSuccess.load(std::memory_order_acquire),
-                        std::memory_order_release
-                    );
+                    if (cmdSize >= 3) {
+                        const std::string cheatName = cmd[2];
+                        commandSuccess.store(
+                            pchtxt2cheat(sourcePath, cheatName) && commandSuccess.load(std::memory_order_acquire),
+                            std::memory_order_release
+                        );
+                    } else {
+                        commandSuccess.store(
+                            pchtxt2cheat(sourcePath) && commandSuccess.load(std::memory_order_acquire),
+                            std::memory_order_release
+                        );
+                    }
                 }
                 return;
             }
@@ -4845,7 +4853,7 @@ void processCommand(const std::vector<std::string>& cmd, const std::string& pack
                 if (launchUpdaterPayload) {
                     const std::string rebootOption = PAYLOADS_PATH + "ultrahand_updater.bin";
                     if (!isFile(rebootOption)) {
-                        downloadFile(UPDATER_PAYLOAD_URL, PAYLOADS_PATH, true);
+                        downloadFile(UPDATER_PAYLOAD_URL, PAYLOADS_PATH, false, true);
                         downloadPercentage.store(-1, std::memory_order_release);
                     }
                     if (isFile(rebootOption)) {
@@ -5104,7 +5112,7 @@ void backgroundInterpreter(void* workPtr) {
     delete workData;
     
     if (ult::isHidden.load(std::memory_order_acquire)) {
-        if (tsl::notification) {
+        if (tsl::notification && ult::useNotifications) {
             if (commandSuccess.load(std::memory_order_acquire))
                 tsl::notification->show(NOTIFY_HEADER + TASK_IS_COMPLETE);
             else
