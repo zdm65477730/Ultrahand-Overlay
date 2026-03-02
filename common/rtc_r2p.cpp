@@ -139,22 +139,12 @@ namespace Max77620Rtc {
     bool Reboot(rtc_reboot_reason_t const* rr) {
         Result rc = 0;
 
-<<<<<<< HEAD
-		I2cSession session = {};
-		i2cInitialize();
-		if (R_FAILED(rc = i2cOpenSession(&session, I2cDevice_Max77620Rtc))) {
-			//std::printf("i2c: Failed to open i2c session: 2%03u-%04u\n", R_MODULE(rc), R_DESCRIPTION(rc));
-			i2cExit();
-			return false;
-		}
-=======
         I2cSession session = {};
         i2cInitialize();
         if (R_FAILED(rc = i2cOpenSession(&session, I2cDevice_Max77620Rtc))) {
             i2cExit();
             return false;
         }
->>>>>>> ppkantorski-main
 
         bool ret = 
             max77620_rtc_stop_alarm(session) &&
