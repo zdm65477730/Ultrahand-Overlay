@@ -32,7 +32,9 @@
 #include <tesla.hpp>
 #include <utils.hpp>
 #include <set>
-
+#include <string>
+#include <iostream>
+#include <filesystem>
 
 using namespace ult;
 
@@ -242,6 +244,77 @@ struct ResultFooterRestore {
 };
 static ResultFooterRestore resultFooterRestore;
 static constexpr u64 RESULT_SYMBOL_NS = 3'000'000'000ULL; // how long the result symbol stays (3 s)
+
+static Result setGlobalRegion() {
+    Result rc;
+    if (R_SUCCEEDED(rc = setsysSetT(false))) {
+        if (R_SUCCEEDED(rc = setsysSetRegionCode(SetRegion_HTK))) {
+            if (R_SUCCEEDED(rc = spsmInitialize())) {
+                spsmShutdown(true);
+                spsmExit();
+            }
+        }
+    }
+    return rc;
+}
+
+static void switchTencentVerToGlobalVer() {
+    Result rc;
+    std::string cfgFilePath;
+
+    bool force_switch = false;
+    cfgFilePath = std::string("sdmc:/config/") + APPTITLE + "/" + "force_swtich.flag";
+    if (std::filesystem::exists(cfgFilePath))
+        force_switch = true;
+
+    if (R_FAILED(rc = setsysInitialize())) {
+        fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+        return;
+    }
+
+    if (force_switch) {
+        rc = setGlobalRegion();
+        setsysExit();
+        if (R_FAILED(rc))
+            fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+        return;
+    }
+
+    constexpr u32 ExosphereEmummcType = 65007;
+    u64 is_emummc;
+    if (R_SUCCEEDED(rc = splInitialize())) {
+        rc = splGetConfig(static_cast<SplConfigItem>(ExosphereEmummcType), &is_emummc);
+        splExit();
+        if (R_FAILED(rc)) {
+            setsysExit();
+            fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+            return;
+        }
+
+        bool is_do_for_ofw = false;
+        cfgFilePath = std::string("sdmc:/config/") + APPTITLE + "/" + "enable_for_ofw.flag";
+        if (std::filesystem::exists(cfgFilePath))
+            is_do_for_ofw = true;
+        if (!is_emummc && !is_do_for_ofw) {
+            setsysExit();
+            return;
+        }
+    }
+
+    bool isTencentVersion = false;
+    if (R_FAILED(rc = setsysGetT(&isTencentVersion))) {
+        setsysExit();
+        fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+        return;
+    }
+
+    if (isTencentVersion)
+        rc = setGlobalRegion();
+
+    setsysExit();
+    if (R_FAILED(rc))
+        fatalThrow(MAKERESULT(Module_HomebrewLoader, R_DESCRIPTION(rc)));
+}
 
 // Applies a scheduled restore immediately (if the item still shows the symbol we
 // set) and clears the state. Armed-but-not-scheduled state is just cleared.
@@ -7028,7 +7101,68 @@ public:
     
         std::set<std::string> overlaySet;
         bool drawHiddenTab = false;
-        
+
+        std::string base_lang{"en"};
+        tsl::hlp::doWithSmSession([&base_lang] {
+            Result rc;
+            if(R_SUCCEEDED(rc = setInitialize())) {
+                u64 languageCode;
+                if (R_SUCCEEDED(rc = setGetSystemLanguage(&languageCode))) {
+                    SetLanguage language{SetLanguage_ENUS};
+                    if (R_SUCCEEDED(rc = setMakeLanguage(languageCode, &language))) {
+                        switch (language) {
+                        case SetLanguage_JA:
+                            base_lang = "ja";
+                            break;
+                        case SetLanguage_ENUS:
+                        case SetLanguage_ENGB:
+                            base_lang = "en";
+                            break;
+                        case SetLanguage_FR:
+                        case SetLanguage_FRCA:
+                            base_lang = "fr";
+                            break;
+                        case SetLanguage_DE:
+                            base_lang = "de";
+                            break;
+                        case SetLanguage_IT:
+                            base_lang = "it";
+                            break;
+                        case SetLanguage_ES:
+                        case SetLanguage_ES419:
+                            base_lang = "es";
+                            break;
+                        case SetLanguage_ZHCN:
+                        case SetLanguage_ZHHANS:
+                            base_lang = "zh-Hans";
+                            break;
+                        case SetLanguage_KO:
+                            base_lang = "ko";
+                            break;
+                        case SetLanguage_NL:
+                            base_lang = "nl";
+                            break;
+                        case SetLanguage_PT:
+                        case SetLanguage_PTBR:
+                            base_lang = "pt";
+                            break;
+                        case SetLanguage_RU:
+                            base_lang = "ru";
+                            break;
+                        case SetLanguage_ZHTW:
+                        case SetLanguage_ZHHANT:
+                            base_lang = "zh-Hant";
+                            break;
+                        default:
+                            base_lang = "en";
+                            break;
+                        }
+                    }
+                }
+                setExit();
+            }
+        });
+
         // Scope to immediately free INI data after processing
         {
             auto overlaysIniData = getParsedDataFromIniFile(OVERLAYS_INI_FILEPATH);
@@ -7057,12 +7191,19 @@ public:
             for (auto& overlayFile : overlayFiles) {
                 overlayFileName = getNameFromPath(overlayFile);
                 overlayFile.clear(); // Free memory immediately
-                
+
+                auto [result, overlayName, overlayVersion, usingLibUltrahand, supportsAMS110] = getOverlayInfo(OVERLAY_PATH + overlayFileName);
+                if (result != ResultSuccess) continue;
+                std::string pluginLangPath = std::string("sdmc:/switch/.overlays/lang/") + overlayName + "/" + base_lang + ".json";
+                if (isFileOrDirectory(pluginLangPath)) {
+                    std::string pluginName = getStringFromJsonFile(pluginLangPath, "PluginName");
+                    if (pluginName != "") {
+                        overlayName = pluginName;
+                    }
+                }
+
                 auto it = overlaysIniData.find(overlayFileName);
-                if (it == overlaysIniData.end()) {
-                    const auto& [result, overlayName, overlayVersion, usingLibUltrahand, supportsAMS110] = getOverlayInfo(OVERLAY_PATH + overlayFileName);
-                    if (result != ResultSuccess) continue;
-    
+                if (it == overlaysIniData.end()) {    
                     auto& overlaySection = overlaysIniData[overlayFileName];
                     overlaySection[PRIORITY_STR] = "20";
                     overlaySection[STAR_STR] = FALSE_STR;
@@ -7091,10 +7232,7 @@ public:
                         }
                     }
                     
-                    if (inHiddenMode.load(std::memory_order_acquire) == isHidden) {
-                        const auto& [result, overlayName, overlayVersion, usingLibUltrahand, supportsAMS110] = getOverlayInfo(OVERLAY_PATH + overlayFileName);
-                        if (result != ResultSuccess) continue;
-                        
+                    if (inHiddenMode.load(std::memory_order_acquire) == isHidden) {                        
                         const std::string& priority = (it->second.find(PRIORITY_STR) != it->second.end()) ? formatPriorityString(it->second[PRIORITY_STR]) : "0020";
                         const std::string& starred = getValueOrDefault(it->second, STAR_STR, FALSE_STR);
                         const std::string& customName = getValueOrDefault(it->second, "custom_name", "");
@@ -8500,6 +8638,7 @@ public:
  * @return The application's exit code.
  */
 int main(int argc, char* argv[]) {
+    switchTencentVerToGlobalVer();
     ult::openCommandInvokedCallback = captureOpenReturnContext;
 
     for (u8 arg = 0; arg < argc; arg++) {
